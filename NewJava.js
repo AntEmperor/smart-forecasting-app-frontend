@@ -1,8 +1,9 @@
 // ======== CONFIGURE YOUR BACKEND URL HERE ========
-// Final working port must be 8001
-const API_URL = "http://127.0.0.1:8001";
-// =================================================
-const API_BASE = "https://emperorgrid.loca.lt";
+// NewJava.js 
+
+// Define the live base URL:
+const API_URL = "https://smart-forecasting-api-backend.onrender.com"; 
+
 
 // Global State and Helpers
 const charts = {};
@@ -109,8 +110,8 @@ async function callPredict(model, data) {
     }
     
     return await res.json();
-}
 
+}
 // --- FORM SUBMIT HANDLERS ---
 
 /* HOURLY */
