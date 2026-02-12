@@ -1,7 +1,8 @@
+from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import joblib 
 
 # --- CONFIGURATION ---
@@ -33,20 +34,56 @@ xgb_daily_model = xgb.XGBRegressor(
     random_state=42
 )
 
-xgb_daily_model.fit(X_train_d, y_train_d)
+# --- Season-aware Sample Weighting for DAILY model ---
+
+season_weights = {
+    'rainy': 1.0,
+    'harmattan': 1.4,
+    'dry': 1.8
+}
+
+sample_weight_d = X_train_d.apply(
+    lambda row: season_weights[
+        'rainy' if row['is_rainy'] == 1 else
+        'harmattan' if row['is_harmattan'] == 1 else
+        'dry'
+    ],
+    axis=1
+)
+
+xgb_daily_model.fit(
+    X_train_d,
+    y_train_d,
+    sample_weight=sample_weight_d
+)
+
 
 # --- Evaluation ---
 y_pred_d = xgb_daily_model.predict(X_test_d)
 
-rmse_d = np.sqrt(mean_squared_error(y_test_d, y_pred_d))
-r2_d = r2_score(y_test_d, y_pred_d)
+rmse = np.sqrt(mean_squared_error(y_test_d, y_pred_d))
+mae = mean_absolute_error(y_test_d, y_pred_d)
+r2 = r2_score(y_test_d, y_pred_d)
+mape = np.mean(np.abs((y_test_d - y_pred_d) / y_test_d)) * 100
 
-joblib.dump(xgb_daily_model, 'daily_mtlf_model.joblib')
-print("Daily Model saved as 'daily_mtlf_model.joblib'")
+joblib.dump(xgb_daily_model, 'daily_mtlf_model1.joblib')
+print("Daily Model saved as 'daily_mtlf_model1.joblib'")
 # -----------------------
-
+print("\n📊 Evaluation Results:")
+print(f"RMSE : {rmse:,.2f}")
+print(f"MAE  : {mae:,.2f}")
+print(f"R²   : {r2:.4f}")
+print(f"MAPE : {mape:.2f}%")
 print("\n--- Daily Model Evaluation Complete ---")
-print(f"Root Mean Squared Error (RMSE) on Daily Test Set: {rmse_d:.2f} kWh")
-print(f"R-squared (R²) on Daily Test Set: {r2_d:.4f}") 
-print("-" * 50)
-print("NEXT: We can proceed to the Weekly Model.")
+# --- 6. CRITICAL VERIFICATION: Feature Importance Plot ---
+print("Generating Feature Importance Plot (Verification Step)...")
+
+for i in range(5):
+    print(f"Actual: {y_test_d.iloc[i]:,.2f} | Predicted: {y_pred_d[i]:,.2f}")
+# Plot feature importance
+plt.figure(figsize=(10, 6))
+xgb.plot_importance(xgb_daily_model, height=0.5, max_num_features=15)
+plt.title("Top 15 Feature Importances")
+plt.tight_layout()
+plt.savefig("models/importance1.png")
+plt.show()

@@ -1,8 +1,4 @@
-"""
-Rewritten backend - ALIGNED for Hourly/Daily Inputs.
-- Added robust error handling and explicit NaN/None checks to prevent 500 errors.
-- Weekly prediction is RESTORED to Daily Model Aggregation.
-"""
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -12,7 +8,7 @@ from datetime import datetime, date, timedelta
 import joblib, json, os, traceback, math
 import pandas as pd
 import numpy as np
-
+from fastapi.middleware.cors import CORSMiddleware
 # -----------------------
 # Config - update if you move files
 # -----------------------
@@ -21,22 +17,35 @@ import numpy as np
 # ==========================
 # IMPORTANT: Ensure this path is 100% correct
 MODEL_DIR = r"C:\Users\Admin\smart forecasting app\data set"
-HOURLY_MODEL_FILE = os.path.join(MODEL_DIR, "hourly_stlf_model.joblib")
-DAILY_MODEL_FILE = os.path.join(MODEL_DIR, "daily_mtlf_model.joblib")
+HOURLY_MODEL_FILE = os.path.join(MODEL_DIR, "hourly_stlf_model1.joblib")
+DAILY_MODEL_FILE = os.path.join(MODEL_DIR, "daily_mtlf_model1.joblib")
 
 # -----------------------
 # App init & CORS (permissive for dev)
 # -----------------------
 app = FastAPI(title="SmartGrid STLF API (Aligned & Weekly Aggregation)")
 
-# Ensure CORS is permissive and correct
+#from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+origins = [
+    # Explicitly allow your app
+    "https://antemperor.github.io", 
+    "https://antemperor.github.io/smart-forecasting-app-frontend/",
+    # Allow any HTTPS origin for maximum compatibility (common on free tiers)
+    "https://*", 
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ... (rest of code)
 
 # -----------------------
 # Globals

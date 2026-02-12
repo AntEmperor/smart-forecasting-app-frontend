@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 import joblib
 
@@ -45,21 +45,51 @@ xgb_model = xgb.XGBRegressor(
     n_jobs=-1
 )
 
-xgb_model.fit(X_train, y_train)
+# --- 4b. Season-aware Sample Weighting (CRITICAL FIX) ---
+
+season_weights = {
+    'rainy': 1.0,
+    'harmattan': 1.8,
+    'dry': 2.5
+}
+
+sample_weight = X_train.apply(
+    lambda row: season_weights[
+        'rainy' if row['is_rainy'] == 1 else
+        'harmattan' if row['is_harmattan'] == 1 else
+        'dry'
+    ],
+    axis=1
+)
+
+xgb_model.fit(
+    X_train,
+    y_train,
+    sample_weight=sample_weight
+)
+
 
 # --- 5. Prediction and Evaluation ---
 y_pred = xgb_model.predict(X_test)
 
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+mae = mean_absolute_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
+mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
 
-print("\n--- Model Evaluation on Leakage-Free Test Set (2024) ---")
-print(f"Root Mean Squared Error (RMSE): {rmse:.2f} kW")
-print(f"R-squared (R²): {r2:.4f}") 
-print("-" * 50)
+print("\n📊 Evaluation Results:")
+print(f"RMSE : {rmse:,.2f}")
+print(f"MAE  : {mae:,.2f}")
+print(f"R²   : {r2:.4f}")
+print(f"MAPE : {mape:.2f}%")
 
-joblib.dump(xgb_model, 'hourly_stlf_model.joblib')
-print("Hourly Model saved as 'hourly_stlf_model.joblib'")
+# Show sample predictions
+print("\n📌 Sample Predictions vs Actual:")
+for i in range(5):
+    print(f"Actual: {y_test.iloc[i]:,.2f} | Predicted: {y_pred[i]:,.2f}")
+
+joblib.dump(xgb_model, 'hourly_stlf_model1.joblib')
+print("Hourly Model saved as 'hourly_stlf_model1.joblib'")
 # --- 6. CRITICAL VERIFICATION: Feature Importance Plot ---
 print("Generating Feature Importance Plot (Verification Step)...")
 
@@ -75,8 +105,8 @@ plt.xlabel('Gain (Total Contribution to Model)')
 plt.ylabel('Feature')
 plt.gca().invert_yaxis() # Highest gain at the top
 plt.tight_layout()
-plt.savefig('feature_importance.png')
+plt.savefig('feature_importance1.png')
 plt.close()
 
-print("Verification Plot saved as 'feature_importance.png'.")
+print("Verification Plot saved as 'feature_importance1.png'.")
 print("Check the plot to confirm our custom features are highly ranked!")
